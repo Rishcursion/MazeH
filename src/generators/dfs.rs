@@ -1,6 +1,6 @@
 use rand::{rng, seq::SliceRandom};
 
-/// Defintiion for a cell in a maze, with cell state true representing a wall, and false representing open in the respective direction
+/// Defintion for a cell in a maze, with cell state true representing a wall, and false representing open in the respective direction
 #[derive(Debug, Clone, Copy)]
 pub struct Cell {
     north: bool,
@@ -100,14 +100,8 @@ impl Maze {
             None
         }
     }
-    /// Returns a mutable cell present in the grid, by translating from 2d coordinates to a 1d coordinate
-    pub fn get_mut_cell(&mut self, x: usize, y: usize) -> Option<&mut Cell> {
-        if (x < self.width) && (y < self.height) {
-            Some(&mut self.grid[y * self.width + x])
-        } else {
-            None
-        }
-    }
+
+    /// Returns the 1d coord based on the 2d coords for the list representation of the maze
     pub fn get_1d_coord(&self, x: usize, y: usize) -> usize {
         y * self.width + x
     }
@@ -189,3 +183,5 @@ pub fn dfs_helper(maze: &mut Maze, x: usize, y: usize, cells_visited: &mut Vec<b
         }
     }
 }
+
+pub fn gen_ellers(maze: &mut Maze) {}
