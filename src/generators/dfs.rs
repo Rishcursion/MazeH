@@ -169,6 +169,7 @@ pub fn dfs_helper(maze: &mut Maze, x: usize, y: usize, cells_visited: &mut Vec<b
     let mut directions = Direction::all();
 
     cells_visited[maze.get_1d_coord(x, y)] = true;
+    //We shuffle directions for every new cell to increase variance and generate interesting unique mazes
     directions.shuffle(&mut rng());
 
     for direction in directions {
@@ -184,4 +185,40 @@ pub fn dfs_helper(maze: &mut Maze, x: usize, y: usize, cells_visited: &mut Vec<b
     }
 }
 
-pub fn gen_ellers(maze: &mut Maze) {}
+/// Function for modifying a maze in-place using the Sidewinder algorithm, where it iterates upon  itself horizontally, and opens up walls in the north and east directions
+pub fn gen_sidewinder(maze: &mut Maze) {
+    for y in 0..maze.height {
+        let mut run_start = 0;
+        for x in 0..maze.width {
+            if y > 0 && (x + 1 == maze.width || rand::random_range(0..4) == 0) {
+                let cell = run_start + rand::random_range(0..x - run_start + 1);
+                maze.connect_cells(cell, y, Direction::North);
+                run_start = x + 1;
+            } else if x + 1 < maze.width {
+                maze.connect_cells(x, y, Direction::East);
+            }
+        }
+    }
+}
+
+/// Function for modifying a maze in-place
+pub fn gen_binarytree(maze: &mut Maze) {
+    for y in 0..maze.height {
+        for x in 0..maze.width {
+            let (can_west, can_north) = (x > 0, y > 0);
+            let direction = match (can_west, can_north) {
+                (true, true) => {
+                    if rand::random() {
+                        Direction::North
+                    } else {
+                        Direction::West
+                    }
+                }
+                (false, false) => continue,
+                (true, false) => Direction::West,
+                (false, true) => Direction::North,
+            };
+            maze.connect_cells(x, y, direction);
+        }
+    }
+}
