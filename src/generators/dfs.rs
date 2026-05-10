@@ -1,19 +1,19 @@
 use rand::{rng, seq::SliceRandom};
-
-/// Defintion for a cell in a maze, with cell state true representing a wall, and false representing open in the respective direction
-#[derive(Debug, Clone, Copy)]
+use serde::{Deserialize, Serialize};
+/// Definition for a cell in a maze, with cell state true representing a wall, and false representing open in the respective direction
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct Cell {
-    north: bool,
-    south: bool,
-    east: bool,
-    west: bool,
+    pub north: bool,
+    pub south: bool,
+    pub east: bool,
+    pub west: bool,
 }
 /// Definition of the maze itself, with metadata and the state of the maze
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Maze {
-    grid: Vec<Cell>,
-    height: usize,
-    width: usize,
+    pub grid: Vec<Cell>,
+    pub height: usize,
+    pub width: usize,
 }
 #[derive(Debug, Clone, Copy)]
 /// Enum for valid directions that can be checked, can be extended to NE,NW, SE,SW for more complexity in the future
@@ -24,6 +24,35 @@ pub enum Direction {
     West,
 }
 
+///Enum for maze generation algorithm dispatch, add new generation algorithms here first
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, PartialOrd)]
+#[serde(rename_all = "kebab-case")]
+pub enum GenAlgorithm {
+    RecursiveBackTracker,
+    Sidewinder,
+    BinaryTree,
+}
+
+impl GenAlgorithm {
+    /// To provide a list of algorithms available in the backend to the frontend, can remove algorithms from here if broken
+    pub fn all() -> [GenAlgorithm; 3] {
+        [
+            GenAlgorithm::RecursiveBackTracker,
+            GenAlgorithm::Sidewinder,
+            GenAlgorithm::BinaryTree,
+        ]
+    }
+    /// Dispatcher for just getting a finished maze without any streaming
+    pub fn generate_static(&self, maze: &mut Maze) {
+        match self {
+            Self::RecursiveBackTracker => gen_dfs(maze),
+
+            Self::Sidewinder => gen_sidewinder(maze),
+
+            Self::BinaryTree => gen_binarytree(maze),
+        }
+    }
+}
 impl Cell {
     /// Constructor function for the initial cell state with all walls set
     pub fn new() -> Self {
@@ -36,7 +65,7 @@ impl Cell {
     }
 
     /// Helper function to clear the wall in a particular direction
-    pub fn unset_wall(&mut self, direction: Direction) {
+    fn unset_wall(&mut self, direction: Direction) {
         match direction {
             Direction::North => self.north = false,
             Direction::West => self.west = false,
@@ -51,7 +80,6 @@ impl Default for Cell {
         Self::new()
     }
 }
-
 impl Direction {
     /// Returns a fixed array of all directions
     pub fn all() -> [Direction; 4] {
@@ -63,7 +91,7 @@ impl Direction {
         ]
     }
     /// Returns the opposite direction of the current direction
-    pub fn opposite(&self) -> Self {
+    pub fn opposite(self) -> Self {
         match self {
             Self::North => Self::South,
             Self::East => Self::West,
@@ -72,7 +100,7 @@ impl Direction {
         }
     }
     /// Returns the delta values to move in the specified direction
-    pub fn delta(&self) -> (isize, isize) {
+    pub fn delta(self) -> (isize, isize) {
         match self {
             Self::North => (0, -1),
             Self::East => (1, 0),
@@ -93,7 +121,7 @@ impl Maze {
         }
     }
     /// Returns a cell present in the grid, by translating from 2d coordinates to a 1d coordinate
-    pub fn get_cell(&self, x: usize, y: usize) -> Option<Cell> {
+    pub fn cell(&self, x: usize, y: usize) -> Option<Cell> {
         if (x < self.width) && (y < self.height) {
             Some(self.grid[y * self.width + x])
         } else {
@@ -102,7 +130,7 @@ impl Maze {
     }
 
     /// Returns the 1d coord based on the 2d coords for the list representation of the maze
-    pub fn get_1d_coord(&self, x: usize, y: usize) -> usize {
+    pub fn index(&self, x: usize, y: usize) -> usize {
         y * self.width + x
     }
     /// Returns coords of the next neighbour in a specified direction from the current cell
@@ -122,8 +150,8 @@ impl Maze {
         direction: Direction,
     ) -> Option<(usize, usize)> {
         let (new_x, new_y) = self.neighbour(curr_x, curr_y, direction)?;
-        let curr_idx = self.get_1d_coord(curr_x, curr_y);
-        let new_idx = self.get_1d_coord(new_x, new_y);
+        let curr_idx = self.index(curr_x, curr_y);
+        let new_idx = self.index(new_x, new_y);
 
         self.grid[curr_idx].unset_wall(direction);
         self.grid[new_idx].unset_wall(direction.opposite());
@@ -132,19 +160,19 @@ impl Maze {
     }
 
     /// Function for rendering the maze using ASCII
-    pub fn render(&self) -> Option<()> {
+    pub fn render(&self) {
         let repeated = "_".repeat(self.width * 2 - 1);
         println!(" {repeated}");
         for y in 0..self.height {
             print!("|");
             for x in 0..self.width {
-                if !self.get_cell(x, y)?.south {
+                if !self.grid[self.index(x, y)].south {
                     print!(" ");
                 } else {
                     print!("_");
                 }
-                if !self.get_cell(x, y)?.east {
-                    if self.get_cell(x, y)?.south && self.get_cell(x + 1, y)?.south {
+                if !self.grid[self.index(x, y)].east {
+                    if self.grid[self.index(x, y)].south && self.grid[self.index(x + 1, y)].south {
                         print!("_");
                     } else {
                         print!(" ");
@@ -155,7 +183,6 @@ impl Maze {
             }
             println!();
         }
-        Some(())
     }
 }
 
@@ -168,7 +195,7 @@ pub fn gen_dfs(maze: &mut Maze) {
 pub fn dfs_helper(maze: &mut Maze, x: usize, y: usize, cells_visited: &mut Vec<bool>) {
     let mut directions = Direction::all();
 
-    cells_visited[maze.get_1d_coord(x, y)] = true;
+    cells_visited[maze.index(x, y)] = true;
     //We shuffle directions for every new cell to increase variance and generate interesting unique mazes
     directions.shuffle(&mut rng());
 
@@ -176,7 +203,7 @@ pub fn dfs_helper(maze: &mut Maze, x: usize, y: usize, cells_visited: &mut Vec<b
         let Some((nx, ny)) = maze.neighbour(x, y, direction) else {
             continue;
         };
-        let n_idx = maze.get_1d_coord(nx, ny);
+        let n_idx = maze.index(nx, ny);
         if !cells_visited[n_idx] {
             cells_visited[n_idx] = true;
             maze.connect_cells(x, y, direction);
@@ -190,7 +217,7 @@ pub fn gen_sidewinder(maze: &mut Maze) {
     for y in 0..maze.height {
         let mut run_start = 0;
         for x in 0..maze.width {
-            if y > 0 && (x + 1 == maze.width || rand::random_range(0..4) == 0) {
+            if y > 0 && (x + 1 == maze.width || rand::random_range(0..2) == 0) {
                 let cell = run_start + rand::random_range(0..x - run_start + 1);
                 maze.connect_cells(cell, y, Direction::North);
                 run_start = x + 1;
@@ -201,7 +228,7 @@ pub fn gen_sidewinder(maze: &mut Maze) {
     }
 }
 
-/// Function for modifying a maze in-place
+/// Function for modifying a maze in-place using binary tree
 pub fn gen_binarytree(maze: &mut Maze) {
     for y in 0..maze.height {
         for x in 0..maze.width {
