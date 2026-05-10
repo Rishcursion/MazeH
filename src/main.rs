@@ -26,7 +26,9 @@ struct ServerHealth {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
     let app = Router::new()
         .route("/health", get(health))
         .route("/algorithms", get(algorithms))
