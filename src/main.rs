@@ -2,8 +2,7 @@ use axum::{Json, Router, extract::Query, http::StatusCode, routing::get};
 use chrono::{DateTime, Utc};
 use mazeh::generators::dfs::{GenAlgorithm, Maze};
 use serde::{Deserialize, Serialize};
-use tower_http::trace::TraceLayer;
-use tracing::{error, warn};
+use tower_http::{services::ServeDir, trace::TraceLayer};
 
 use std::sync::LazyLock;
 
@@ -29,10 +28,12 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
+
     let app = Router::new()
         .route("/health", get(health))
         .route("/algorithms", get(algorithms))
         .route("/maze", get(generate))
+        .fallback_service(ServeDir::new("static"))
         .layer(TraceLayer::new_for_http());
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
@@ -61,5 +62,6 @@ async fn generate(
     }
     let mut maze: Maze = Maze::new(height, width);
     algorithm.generate_static(&mut maze);
+    maze.render();
     Ok(Json(maze))
 }

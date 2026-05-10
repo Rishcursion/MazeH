@@ -9,7 +9,7 @@ chrono = { version = "0.4.44", features = ["serde"] }
 rand = "0.10.1"
 serde = { version = "1.0.228", features = ["derive"] }
 tokio = { version = "1.52.2", features = ["full"] }
-tower-http = { version = "0.6.10", features = ["trace"] }
+tower-http = { version = "0.6.10", features = ["trace", "fs"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features=["env-filter"]}
 

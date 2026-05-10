@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MazeH</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <h1 class="header">MazeH</h1>
+    <div>
+      <input id="height" type="number" placeholder="height" />
+      <input id="width" type="number" placeholder="width" />
+      <select
+        name="algorithm"
+        id="algorithm"
+        placeholder="Choose Maze Algorithm"
+      ></select>
+      <button
+        id="generate-btn"
+        onclick="
+          {
+            generate();
+          }
+        "
+      >
+        Generate!
+      </button>
+    </div>
+    <canvas id="maze" width="600" height="600"> </canvas>
+    <script>
+      // Populates maze generation options
+      fetch("/algorithms")
+        .then((r) => r.json())
+        .then((data) => {
+          const select = document.getElementById("algorithm");
+          for (const algo of data) {
+            const option = document.createElement("option");
+            option.value = algo;
+            option.textContent = algo
+              .split("-")
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" ");
+            select.appendChild(option);
+          }
+        });
+
+      // Renders each cell's individual state with specified coordinates
+      function draw_rectangle(ctx, cell, x, y, lim_x, lim_y) {
+        ctx.beginPath();
+        if (cell.north) {
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + lim_x, y);
+        }
+        if (cell.south) {
+          ctx.moveTo(x, y + lim_y);
+          ctx.lineTo(x + lim_x, y + lim_y);
+        }
+        if (cell.west) {
+          ctx.moveTo(x, y);
+          ctx.lineTo(x, y + lim_y);
+        }
+        if (cell.east) {
+          ctx.moveTo(x + lim_x, y);
+          ctx.lineTo(x + lim_x, y + lim_y);
+        }
+        ctx.stroke();
+      }
+      // Uses width, height and maze generation options to fetch the generated maze from the backend
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      async function generate() {
+        const height = document.getElementById("height").value;
+        const width = document.getElementById("width").value;
+        const algo = document.getElementById("algorithm").value;
+
+        const r = await fetch(
+          `/maze?algorithm=${algo}&width=${width}&height=${height}`,
+        );
+        const data = await r.json();
+
+        const canvas = document.getElementById("maze");
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.lineWidth = 2;
+
+        const cellW = 600 / data.width;
+        const cellH = 600 / data.height;
+
+        for (let y = 0; y < data.height; y++) {
+          for (let x = 0; x < data.width; x++) {
+            draw_rectangle(
+              ctx,
+              data.grid[y * data.width + x],
+              x * cellW,
+              y * cellH,
+              cellW,
+              cellH,
+            );
+            await sleep(5);
+          }
+        }
+      }
+    </script>
+  </body>
+</html>
